@@ -3,11 +3,10 @@
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <optional>
-#include <thread>
 
 #include "connection.hpp"
-#include "logger.hpp"
-#include "jthread.hpp"
+#include "utils/logger.hpp"
+#include "utils/jthread.hpp"
 
 namespace http_server {
 using namespace boost::asio;
@@ -36,7 +35,7 @@ public:
 				LOG(ERROR) << "failed to create a new connection: " << ec.what();
 			}
 			else {
-				MyJThread::JThread j_thr(std::thread([&](){
+				Utils::JThread j_thr(std::thread([&](){
 					Connection new_connection(std::move(*new_socket_));
 					new_connection.read_data();
 				}));

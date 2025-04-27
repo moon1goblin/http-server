@@ -4,7 +4,7 @@
 // i couldnt figure out how to include jthreads in cmake
 // so fuck it threyre not hard to write
 
-namespace MyJThread {
+namespace Utils {
 class JThread {
 public:
 	JThread(std::thread&& thread)

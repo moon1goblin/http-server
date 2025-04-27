@@ -2,7 +2,7 @@
 
 #include <boost/asio.hpp>
 
-#include "logger.hpp"
+#include "utils/logger.hpp"
 
 namespace http_server {
 using namespace boost::asio;
