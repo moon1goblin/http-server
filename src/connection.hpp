@@ -3,6 +3,7 @@
 #include <boost/asio.hpp>
 
 #include "utils/logger.hpp"
+#include "utils/thread_safe_queue.hpp"
 
 namespace http_server {
 using namespace boost::asio;
@@ -25,8 +26,10 @@ private:
 	}
 
 public:
-    Connection(ip::tcp::socket&& socket)
-        : socket_(std::move(socket)) {
+	Connection(ip::tcp::socket&& socket, Utils::ThreadSafeQueue<std::string>& incoming_queue)
+		: socket_(std::move(socket))
+		, incoming_queue_(incoming_queue)
+	{
 		LOG(INFO) << "new connection at " << get_ip();
 	}
 
@@ -53,14 +56,20 @@ public:
 
 		// sync because im fucking with multithreaded server model atm
 		boost::system::error_code ec;
-		boost::asio::read_until(socket_, read_buf_, header_delimiter);
+		boost::asio::read_until(socket_, read_buf_, header_delimiter, ec);
+
 		if (ec == error::eof) {
 			LOG(INFO) << "connection closed";
 		}
 		else if (ec) {
 			LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
 		}
-		header_data_handler();
+		else {
+			std::string s((std::istreambuf_iterator<char>(&read_buf_)), std::istreambuf_iterator<char>());
+			incoming_queue_.push(s);
+
+			read_data();
+		}
 
 		// async_read_until(socket_, read_buf_, header_delimiter
 		// 		, [&](boost::system::error_code ec, std::size_t bytes_read) {
@@ -82,5 +91,6 @@ public:
 private:
     ip::tcp::socket socket_;
     streambuf read_buf_;
+	Utils::ThreadSafeQueue<std::string>& incoming_queue_;
 };
 }
