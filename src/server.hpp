@@ -1,15 +1,15 @@
 #pragma once
 
 #include <boost/asio.hpp>
-#include <cstdint>
 #include <optional>
 
 #include "connection.hpp"
+#include "http-parser.hpp"
 #include "utils/logger.hpp"
 #include "utils/jthread.hpp"
 #include "utils/thread_safe_queue.hpp"
 
-namespace http_server {
+namespace web_server {
 using namespace boost::asio;
 
 class Server {
@@ -40,7 +40,8 @@ public:
 		respond_thread_.emplace(std::thread([&]() {
 			while (true) {
 				std::string message = std::move(incoming_queue_.pop());
-				LOG(OFF) << message;
+				auto parsed_message = web_server::HTTP_Parser(message);
+				LOG(OFF) << parsed_message.directory_;
 			}
 		}));
 	}

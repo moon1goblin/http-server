@@ -5,7 +5,7 @@
 #include "utils/logger.hpp"
 #include "utils/thread_safe_queue.hpp"
 
-namespace http_server {
+namespace web_server {
 using namespace boost::asio;
 
 class Connection {
