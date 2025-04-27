@@ -1,6 +1,7 @@
 # hello bitches
 
-this is an http server in c++ using the boost asio library, for educational purposes
+this is a web server written in c++ using the boost asio library, for educational purposes
+
 i will add more feautures, but it does work : )
 
 ## build & run
