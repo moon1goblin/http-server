@@ -2,15 +2,12 @@
 
 int main() {
     try {
-        boost::asio::io_context io_context;
-
-        Server my_server(io_context, 6969);
-        my_server.accept_connections();
-
-        io_context.run();
+		boost::asio::io_context io_context;
+		http_server::Server my_server(io_context, 6969);
+        my_server.start();
 
     } catch (std::exception &e) {
-        std::cerr << e.what() << std::endl;
+        LOG(ERROR) << e.what();
     }
 
     return 0;
