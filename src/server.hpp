@@ -3,9 +3,11 @@
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <optional>
+#include <thread>
 
 #include "connection.hpp"
 #include "logger.hpp"
+#include "jthread.hpp"
 
 namespace http_server {
 using namespace boost::asio;
@@ -17,21 +19,13 @@ public:
         , acceptor_(io_context_, ip::tcp::endpoint(ip::tcp::v4(), port)) {
 	}
 
-	// Server(std::uint16_t port) {
-	// 	// io_context& io_context_ = *(new io_context());
-	// 	io_context io_context_;
-	// 	ip::tcp::acceptor acceptor_(io_context_, ip::tcp::endpoint(ip::tcp::v4(), port));
-	// 	// ip::tcp::acceptor acceptor_(io_context_, ip::tcp::endpoint(ip::tcp::v4(), port));
-	// 	// ip::tcp::acceptor acceptor_ = *(new ip::tcp::acceptor(io_context_, ip::tcp::endpoint(ip::tcp::v4(), port)));
-	// }
-
 	void start() {
 		LOG(INFO) << "server started, accepting connections";
 		accept_connections();
 		io_context_.run();
 	}
 
-	// // TODO: make a stop method
+	// // // TODO: make a stop method
 	// void stop() {
 	// }
 
@@ -42,9 +36,11 @@ public:
 				LOG(ERROR) << "failed to create a new connection: " << ec.what();
 			}
 			else {
-				LOG(INFO) << "new connection at ip: " << new_socket_->remote_endpoint().address();
-
-				std::make_shared<Connection>(std::move(*new_socket_))->read_data();
+				MyJThread::JThread j_thr(std::thread([&](){
+					Connection new_connection(std::move(*new_socket_));
+					new_connection.read_data();
+				}));
+				// std::make_shared<Connection>(std::move(*new_socket_))->read_data();
 			}
 			accept_connections();
 		});

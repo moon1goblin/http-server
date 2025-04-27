@@ -7,16 +7,27 @@
 namespace http_server {
 using namespace boost::asio;
 
-class Connection : public std::enable_shared_from_this<Connection> {
+class Connection {
 private:
 	// helper function for logs
 	auto get_ip() {
-		return socket_.remote_endpoint().address();
+		try {
+			auto ip = socket_.remote_endpoint().address();
+			return ip;
+		} catch (boost::system::error_code ec) {
+			if (ec == error::eof) {
+				LOG(INFO) << "connection closed";
+			} else {
+				LOG(ERROR) << "failed to get ip at socket:\n" << ec.what();
+			}
+			throw;
+		}
 	}
 
 public:
     Connection(ip::tcp::socket&& socket)
         : socket_(std::move(socket)) {
+		LOG(INFO) << "new connection at " << get_ip();
 	}
 
 	void header_data_handler() {
@@ -40,29 +51,32 @@ public:
 		// 		this->handle_header_data();
 		// });
 
-		async_read_until(socket_, read_buf_, header_delimiter
-		, [&, self = shared_from_this()](boost::system::error_code ec, std::size_t bytes_read) {
-			if (ec == error::eof) {
-				LOG(INFO) << "connection closed at ip: "
-					<< get_ip();
-			}
-			else if (ec) {
-				LOG(ERROR) << "failed to read data from socket at ip: "
-					<< get_ip() << " " << ec.what();
-			}
-			else {
-				// TODO: cout the buffer contents without emptying it
-				self->header_data_handler();
-				read_data();
-			}
-        });
-		// TODO: read the body too
+		// sync because im fucking with multithreaded server model atm
+		boost::system::error_code ec;
+		boost::asio::read_until(socket_, read_buf_, header_delimiter);
+		if (ec == error::eof) {
+			LOG(INFO) << "connection closed";
+		}
+		else if (ec) {
+			LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
+		}
+		header_data_handler();
 
-		// // not how it works, just get the body size in the parsed header and read for that long
-		// const std::string body_delimiter = "\r\n\r\n";
-		// read_data_untill(body_delimiter, [&](){
-		// 		this->handle_body_data();
-		// });
+		// async_read_until(socket_, read_buf_, header_delimiter
+		// 		, [&](boost::system::error_code ec, std::size_t bytes_read) {
+		// 	if (ec == error::eof) {
+		// 		LOG(INFO) << "connection closed";
+		// 	}
+		// 	else if (ec) {
+		// 		LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
+		// 	}
+		// 	else {
+		// 		header_data_handler();
+		// 		read_data();
+		// 	}
+		//       });
+
+		// TODO: read the body too
     }
 
 private:

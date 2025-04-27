@@ -1,14 +1,16 @@
 #include "http_server.hpp"
 
 int main() {
-    try {
+	try {
 		boost::asio::io_context io_context;
 		http_server::Server my_server(io_context, 6969);
-        my_server.start();
+		my_server.start();
 
-    } catch (std::exception &e) {
-        LOG(ERROR) << e.what();
-    }
+		// TODO: detect ctrl + c somehow and shut off the server gracefully
 
-    return 0;
+	} catch (std::exception &e) {
+		LOG(ERROR) << e.what();
+	}
+
+	return 0;
 }
