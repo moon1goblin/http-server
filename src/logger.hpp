@@ -1,5 +1,5 @@
 // logger config:
-#define LOGGER_CONFIG_SET_LOG_LEVEL INFO
+#define LOGGER_CONFIG_SET_LOG_LEVEL DEBUG
 #define LOGGER_CONFIG_ENABLE_TIMESTAMPS true
 
 #pragma once
@@ -44,6 +44,7 @@ public:
 		if (cur_log_lvl_ > LOGGER_CONFIG_SET_LOG_LEVEL) {
 			return;
 		}
+		std::lock_guard<std::mutex> lock(logger_mtx);
 		log_stream_ << LOG_LEVEL_COLORS[cur_log_lvl_];
 
 		if (LOGGER_CONFIG_ENABLE_TIMESTAMPS) {
@@ -59,6 +60,7 @@ public:
 		if (cur_log_lvl_ > LOGGER_CONFIG_SET_LOG_LEVEL) {
 			return;
 		}
+		std::lock_guard<std::mutex> lock(logger_mtx);
 		log_stream_ << std::endl;
 	}
 

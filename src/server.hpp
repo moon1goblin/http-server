@@ -1,10 +1,8 @@
 #pragma once
 
-#include "boost/asio/io_context.hpp"
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <optional>
-#include <sys/socket.h>
 
 #include "connection.hpp"
 #include "logger.hpp"
