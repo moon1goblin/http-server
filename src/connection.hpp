@@ -3,6 +3,7 @@
 #include <boost/asio.hpp>
 #include <memory>
 
+#include "boost/asio/write.hpp"
 #include "http-parser.hpp"
 #include "utils/logger.hpp"
 #include "utils/thread_safe_queue.hpp"
@@ -49,19 +50,19 @@ public:
 
     // reads client's messages and queues them
 	void write_data(const std::string& message_str) {
-		boost::system::error_code ec;
-		boost::asio::write(socket_, boost::asio::buffer(message_str), ec);
-
-		if (ec == error::eof) {
-			LOG(INFO) << "connection closed";
-		}
-		else if (ec) {
-			LOG(ERROR) << "failed to send data to socket:\n" << ec.what();
-		}
-		else {
-			LOG(DEBUG) << "sent message:\n" << message_str
-				<< "\nto socket at ip: " << get_ip();
-		}
+		async_write(socket_, boost::asio::buffer(message_str)
+			, [&](boost::system::error_code ec, std::size_t bytes_read) {
+			if (ec == error::eof) {
+				LOG(INFO) << "connection closed";
+			}
+			else if (ec) {
+				LOG(ERROR) << "failed to send data to socket:\n" << ec.what();
+			}
+			else {
+				LOG(DEBUG) << "sent message:\n" << message_str
+					<< "\nto socket at ip: " << get_ip();
+			}
+		});
 	}
 
     void read_data() {
@@ -69,44 +70,23 @@ public:
 			<< get_ip();
 
         const std::string header_delimiter = "\r\n\r\n";
-		// read_data_untill(header_delimiter, [&](){
-		// 		this->handle_header_data();
-		// });
-
-		// sync because im fucking with multithreaded server model atm
-		boost::system::error_code ec;
-		boost::asio::read_until(socket_, read_buf_, header_delimiter, ec);
-
-		if (ec == error::eof) {
-			LOG(INFO) << "connection closed";
-		}
-		else if (ec) {
-			LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
-		}
-		else {
-			incoming_queue_.push(Incoming_Message_type(
-					web_server::HTTP::Request(read_buf_), shared_from_this()
-			));
-			// incoming_queue_.push(msg);
-
-			read_data();
-		}
-
-		// async_read_until(socket_, read_buf_, header_delimiter
-		// 		, [&](boost::system::error_code ec, std::size_t bytes_read) {
-		// 	if (ec == error::eof) {
-		// 		LOG(INFO) << "connection closed";
-		// 	}
-		// 	else if (ec) {
-		// 		LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
-		// 	}
-		// 	else {
-		// 		header_data_handler();
-		// 		read_data();
-		// 	}
-		//       });
 
 		// TODO: read the body too
+		async_read_until(socket_, read_buf_, header_delimiter
+				, [&, self = shared_from_this()](boost::system::error_code ec, std::size_t bytes_read) {
+			if (ec == error::eof) {
+				LOG(INFO) << "connection closed";
+			}
+			else if (ec) {
+				LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
+			}
+			else {
+				incoming_queue_.push(Incoming_Message_type(
+					web_server::HTTP::Request(read_buf_), shared_from_this()
+				));
+				read_data();
+			}
+		});
     }
 
 private:

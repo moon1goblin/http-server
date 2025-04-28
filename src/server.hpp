@@ -4,6 +4,7 @@
 #include <optional>
 
 #include "api.hpp"
+#include "boost/asio/io_context.hpp"
 #include "connection.hpp"
 #include "http-parser.hpp"
 #include "utils/logger.hpp"
@@ -15,10 +16,9 @@ using namespace boost::asio;
 
 class Server {
 public:
-    Server(io_context& io_context, std::uint16_t port)
-        : io_context_(io_context)
-        , acceptor_(io_context_, ip::tcp::endpoint(ip::tcp::v4(), port)) 
-        , api()
+    Server(std::uint16_t port)
+		: io_context_()
+		, acceptor_(io_context_, ip::tcp::endpoint(ip::tcp::v4(), port))
 	{
 	}
 
@@ -26,8 +26,10 @@ public:
 		accept_connections();
 		handle_connections();
 		LOG(INFO) << "server started, accepting connections";
+		io_context_.run();
 	}
 
+	// TODO: implement this for real
 	void stop() {
 		io_context_.stop();
 		respond_thread_.reset();
@@ -70,11 +72,11 @@ public:
 				LOG(ERROR) << "failed to create a new connection: " << ec.what();
 			}
 			else {
-				Utils::JThread j_thr(std::thread([&](){
-					std::make_shared<Connection>(
-						std::move(*new_socket_), incoming_queue_
-					)->read_data();
-				}));
+				// Utils::JThread j_thr(std::thread([&](){
+				std::make_shared<Connection>(
+					std::move(*new_socket_), incoming_queue_
+				)->read_data();
+				// }));
 			}
 			accept_connections();
 		});
@@ -83,7 +85,7 @@ public:
 public:
 	api api;
 private:
-    io_context& io_context_;
+    io_context io_context_;
     ip::tcp::acceptor acceptor_;
     std::optional<ip::tcp::socket> new_socket_;
 	std::optional<Utils::JThread> respond_thread_;

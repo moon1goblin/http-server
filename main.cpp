@@ -2,8 +2,8 @@
 
 int main() {
 	try {
-		boost::asio::io_context io_context;
-		web_server::Server my_server(io_context, 6969);
+		// boost::asio::io_context io_context;
+		web_server::Server my_server(6969);
 
 		my_server.api.add_route("GET", "/", 
 			[](const web_server::HTTP::Request&, web_server::HTTP::Response& Response) {
@@ -18,8 +18,6 @@ int main() {
 		);
 
 		my_server.start();
-
-		io_context.run();
 
 		// TODO: detect ctrl + c somehow and shut off the server gracefully
 
