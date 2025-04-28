@@ -8,9 +8,9 @@
 namespace web_server {
 namespace HTTP {
 
-struct HTTP_request {
+struct Request {
 
-    HTTP_request(boost::asio::streambuf& read_buf) {
+    Request(boost::asio::streambuf& read_buf) {
         std::istream is(&read_buf);
 
         std::getline(is, method, ' ');
@@ -38,16 +38,16 @@ struct HTTP_request {
     std::map<std::string, std::string> header_map;
 };
 
-struct HTTP_response {
+struct Response {
 	using fuck = const std::string&;
-	HTTP_response(fuck status, const std::map<std::string, std::string>& headers, fuck body, fuck HTTP_version = "HTTP/1.1") 
+	Response(fuck status, const std::map<std::string, std::string>& headers, fuck body, fuck HTTP_version = "HTTP/1.1") 
 		: status(status)
 		, header_map(headers)
 		, body(body)
 		, HTTP_version(HTTP_version) {
 	}
 
-	HTTP_response() 
+	Response() 
 		: status("200 OK")
 		, HTTP_version("HTTP/1.1") {
 	}

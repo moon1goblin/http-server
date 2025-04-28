@@ -14,10 +14,10 @@ using namespace boost::asio;
 class Connection;
 
 struct Incoming_Message_type {
-	web_server::HTTP::HTTP_request http_request;
+	web_server::HTTP::Request http_request;
 	std::shared_ptr<Connection> connection_ptr;
 
-	Incoming_Message_type(web_server::HTTP::HTTP_request&& parsed_msg, std::shared_ptr<Connection> connection_ptr) 
+	Incoming_Message_type(web_server::HTTP::Request&& parsed_msg, std::shared_ptr<Connection> connection_ptr) 
 		: http_request(std::move(parsed_msg))
 		, connection_ptr(connection_ptr) {
 	}
@@ -96,7 +96,7 @@ public:
 		}
 		else {
 			incoming_queue_.push(Incoming_Message_type(
-					web_server::HTTP::HTTP_request(read_buf_), shared_from_this()
+					web_server::HTTP::Request(read_buf_), shared_from_this()
 			));
 			// incoming_queue_.push(msg);
 

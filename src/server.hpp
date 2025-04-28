@@ -19,7 +19,7 @@ public:
 		public:
 			api_type() = default;
 
-			using handler_type = std::function<void(const HTTP::HTTP_request&, HTTP::HTTP_response&)>;
+			using handler_type = std::function<void(const HTTP::Request&, HTTP::Response&)>;
 
 			// has a custom < for the map to work, see the end of this file
 			struct route_type {
@@ -33,33 +33,30 @@ public:
 				}
 			};
 
-			HTTP::HTTP_response make_http_response(const HTTP::HTTP_request& Request) {
-				// auto iter_route = routes_.find(route_type(Request.method, Request.directory));
-				auto iter_route = routes_.end();
+			HTTP::Response make_http_response(const HTTP::Request& Request) {
+				auto iter_route = routes_map.find(route_type(Request.method, Request.directory));
 
 				// default not found page
-				if (iter_route == routes_.end()) {
-					HTTP::HTTP_response Response;
+				if (iter_route == routes_map.end()) {
+					HTTP::Response Response;
 					Response.set_status("404 (Not Found)");
-					Response.set_content("<h1>404 page not found :(</h1>", "text/html; charset=utf-8");
+					Response.set_content("<h1>404 page not found :(</h1>", "text/html");
 					return Response;
 				}
 
-				std::cout << "fuck";
-
 				handler_type cur_handler = iter_route->second;
 
-				HTTP::HTTP_response Response;
+				HTTP::Response Response;
 				cur_handler(Request, Response);
 				return Response;
 			}
 
 			void add_route(const std::string& method, const std::string& directory, handler_type handler) {
-				routes_[route_type(method, directory)] = handler;
+				routes_map[route_type(method, directory)] = handler;
 			}
 
 		private:
-			std::map<route_type, handler_type> routes_;
+			std::map<route_type, handler_type> routes_map;
 		};
 
     Server(io_context& io_context, std::uint16_t port)
@@ -73,7 +70,6 @@ public:
 		accept_connections();
 		handle_connections();
 		LOG(INFO) << "server started, accepting connections";
-		io_context_.run();
 	}
 
 	void stop() {
