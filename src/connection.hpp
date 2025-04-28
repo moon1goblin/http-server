@@ -1,14 +1,29 @@
 #pragma once
 
 #include <boost/asio.hpp>
+#include <memory>
 
+#include "http-parser.hpp"
 #include "utils/logger.hpp"
 #include "utils/thread_safe_queue.hpp"
 
 namespace web_server {
 using namespace boost::asio;
 
-class Connection {
+// forward declaration
+class Connection;
+
+struct Incoming_Message_type {
+	web_server::HTTP::IN_MSG_OBJ parsed_msg;
+	std::shared_ptr<Connection> connection_ptr;
+
+	Incoming_Message_type(web_server::HTTP::IN_MSG_OBJ&& parsed_msg, std::shared_ptr<Connection> connection_ptr) 
+		: parsed_msg(std::move(parsed_msg))
+		, connection_ptr(connection_ptr) {
+	}
+};
+
+class Connection: public std::enable_shared_from_this<Connection> {
 private:
 	// helper function for logs
 	auto get_ip() {
@@ -26,7 +41,7 @@ private:
 	}
 
 public:
-	Connection(ip::tcp::socket&& socket, Utils::ThreadSafeQueue<std::string>& incoming_queue)
+	Connection(ip::tcp::socket&& socket, Utils::ThreadSafeQueue<web_server::Incoming_Message_type>& incoming_queue)
 		: socket_(std::move(socket))
 		, incoming_queue_(incoming_queue)
 	{
@@ -45,6 +60,22 @@ public:
 	// }
 
     // reads client's messages and queues them
+	void write_data(const std::string& message_str) {
+		boost::system::error_code ec;
+		boost::asio::write(socket_, boost::asio::buffer(message_str), ec);
+
+		if (ec == error::eof) {
+			LOG(INFO) << "connection closed";
+		}
+		else if (ec) {
+			LOG(ERROR) << "failed to send data to socket:\n" << ec.what();
+		}
+		else {
+			LOG(DEBUG) << "sent message:\n" << message_str
+				<< "\nto socket at ip: " << get_ip();
+		}
+	}
+
     void read_data() {
 		LOG(DEBUG) << "reading data from socket at ip: "
 			<< get_ip();
@@ -65,8 +96,10 @@ public:
 			LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
 		}
 		else {
-			std::string s((std::istreambuf_iterator<char>(&read_buf_)), std::istreambuf_iterator<char>());
-			incoming_queue_.push(s);
+			incoming_queue_.push(Incoming_Message_type(
+					web_server::HTTP::IN_MSG_OBJ(read_buf_), shared_from_this()
+			));
+			// incoming_queue_.push(msg);
 
 			read_data();
 		}
@@ -91,6 +124,7 @@ public:
 private:
     ip::tcp::socket socket_;
     streambuf read_buf_;
-	Utils::ThreadSafeQueue<std::string>& incoming_queue_;
+	Utils::ThreadSafeQueue<web_server::Incoming_Message_type>& incoming_queue_;
 };
+
 }
