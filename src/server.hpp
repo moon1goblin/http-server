@@ -9,16 +9,64 @@
 #include "utils/logger.hpp"
 #include "utils/jthread.hpp"
 #include "utils/thread_safe_queue.hpp"
-#include "../api/api.hpp"
 
 namespace web_server {
 using namespace boost::asio;
 
 class Server {
 public:
+	class api_type{ 
+		public:
+			api_type() = default;
+
+			using handler_type = std::function<void(const HTTP::HTTP_request&, HTTP::HTTP_response&)>;
+
+			// has a custom < for the map to work, see the end of this file
+			struct route_type {
+				std::string method;
+				std::string directory;
+
+				// TODO: learn the fucking move constructors already
+				route_type(const std::string& method, const std::string& directory)
+					: method(method)
+					, directory(directory) {
+				}
+			};
+
+			HTTP::HTTP_response make_http_response(const HTTP::HTTP_request& Request) {
+				// auto iter_route = routes_.find(route_type(Request.method, Request.directory));
+				auto iter_route = routes_.end();
+
+				// default not found page
+				if (iter_route == routes_.end()) {
+					HTTP::HTTP_response Response;
+					Response.set_status("404 (Not Found)");
+					Response.set_content("<h1>404 page not found :(</h1>", "text/html; charset=utf-8");
+					return Response;
+				}
+
+				std::cout << "fuck";
+
+				handler_type cur_handler = iter_route->second;
+
+				HTTP::HTTP_response Response;
+				cur_handler(Request, Response);
+				return Response;
+			}
+
+			void add_route(const std::string& method, const std::string& directory, handler_type handler) {
+				routes_[route_type(method, directory)] = handler;
+			}
+
+		private:
+			std::map<route_type, handler_type> routes_;
+		};
+
     Server(io_context& io_context, std::uint16_t port)
         : io_context_(io_context)
-        , acceptor_(io_context_, ip::tcp::endpoint(ip::tcp::v4(), port)) {
+        , acceptor_(io_context_, ip::tcp::endpoint(ip::tcp::v4(), port)) 
+        , api()
+	{
 	}
 
 	void start() {
@@ -40,23 +88,25 @@ public:
 		LOG(DEBUG) << "started responding to messages";
 		respond_thread_.emplace(std::thread([&]() {
 			while (true) {
-				Incoming_Message_type http_msg = std::move(incoming_queue_.pop());
-
+				Incoming_Message_type Request_Message = std::move(incoming_queue_.pop());
 				// checking before formulating/sending response to not waste resources
-				if (http_msg.connection_ptr == nullptr) {
+				if (Request_Message.connection_ptr == nullptr) {
 					LOG(DEBUG) << "responding to a connection that was disonected";
 					continue;
 				}
 
-				std::string response = api::handle_request(http_msg).MAKE_RESPONSE();
+				LOG(DEBUG) << "connection at ip " << Request_Message.connection_ptr->get_ip()
+					<< " requested " << Request_Message.http_request.method
+					<< " " << Request_Message.http_request.directory;
+				// make response
+				std::string response = api.make_http_response(Request_Message.http_request).make_string();
 
-				if (http_msg.connection_ptr == nullptr) {
+				// send response
+				if (Request_Message.connection_ptr == nullptr) {
 					LOG(DEBUG) << "responding to a connection that was disonected";
 					continue;
 				}
-
-				http_msg.connection_ptr->write_data(response);
-
+				Request_Message.connection_ptr->write_data(response);
 			}
 		}));
 	}
@@ -78,6 +128,8 @@ public:
 		});
     }
 
+public:
+	api_type api;
 private:
     io_context& io_context_;
     ip::tcp::acceptor acceptor_;
@@ -85,4 +137,10 @@ private:
 	std::optional<Utils::JThread> respond_thread_;
 	Utils::ThreadSafeQueue<web_server::Incoming_Message_type> incoming_queue_;
 };
+
+// for the map to work bruh
+bool operator<(const Server::api_type::route_type& lhs, const Server::api_type::route_type rhs) {
+	return (lhs.method < rhs.method) || (lhs.method == rhs.method && lhs.directory < rhs.directory);
+}
+
 }

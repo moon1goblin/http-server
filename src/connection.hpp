@@ -14,17 +14,17 @@ using namespace boost::asio;
 class Connection;
 
 struct Incoming_Message_type {
-	web_server::HTTP::IN_MSG_OBJ parsed_msg;
+	web_server::HTTP::HTTP_request http_request;
 	std::shared_ptr<Connection> connection_ptr;
 
-	Incoming_Message_type(web_server::HTTP::IN_MSG_OBJ&& parsed_msg, std::shared_ptr<Connection> connection_ptr) 
-		: parsed_msg(std::move(parsed_msg))
+	Incoming_Message_type(web_server::HTTP::HTTP_request&& parsed_msg, std::shared_ptr<Connection> connection_ptr) 
+		: http_request(std::move(parsed_msg))
 		, connection_ptr(connection_ptr) {
 	}
 };
 
 class Connection: public std::enable_shared_from_this<Connection> {
-private:
+public:
 	// helper function for logs
 	auto get_ip() {
 		try {
@@ -40,7 +40,6 @@ private:
 		}
 	}
 
-public:
 	Connection(ip::tcp::socket&& socket, Utils::ThreadSafeQueue<web_server::Incoming_Message_type>& incoming_queue)
 		: socket_(std::move(socket))
 		, incoming_queue_(incoming_queue)
@@ -97,7 +96,7 @@ public:
 		}
 		else {
 			incoming_queue_.push(Incoming_Message_type(
-					web_server::HTTP::IN_MSG_OBJ(read_buf_), shared_from_this()
+					web_server::HTTP::HTTP_request(read_buf_), shared_from_this()
 			));
 			// incoming_queue_.push(msg);
 
