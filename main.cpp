@@ -1,4 +1,3 @@
-#include "src/server.hpp"
 #include "web-server.h"
 
 int main() {

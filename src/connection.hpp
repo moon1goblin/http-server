@@ -47,17 +47,6 @@ public:
 		LOG(INFO) << "new connection at " << get_ip();
 	}
 
-	void header_data_handler() {
-		LOG(DEBUG) << "handling header data at ip: "
-			<< get_ip();
-		std::cout << &read_buf_;
-	}
-
-	// void body_data_handler() {
-	// 	LOG(DEBUG) << "handling body data at ip: "
-	// 		<< get_ip();
-	// }
-
     // reads client's messages and queues them
 	void write_data(const std::string& message_str) {
 		boost::system::error_code ec;
