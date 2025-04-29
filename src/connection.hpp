@@ -3,26 +3,12 @@
 #include <boost/asio.hpp>
 #include <memory>
 
-#include "boost/asio/write.hpp"
 #include "http-parser.hpp"
 #include "utils/logger.hpp"
-#include "utils/thread_safe_queue.hpp"
+#include "connection-manager.hpp"
 
 namespace web_server {
 using namespace boost::asio;
-
-// forward declaration
-class Connection;
-
-struct Incoming_Message_type {
-	web_server::HTTP::Request http_request;
-	std::shared_ptr<Connection> connection_ptr;
-
-	Incoming_Message_type(web_server::HTTP::Request&& parsed_msg, std::shared_ptr<Connection> connection_ptr) 
-		: http_request(std::move(parsed_msg))
-		, connection_ptr(connection_ptr) {
-	}
-};
 
 class Connection: public std::enable_shared_from_this<Connection> {
 public:
@@ -41,7 +27,7 @@ public:
 		}
 	}
 
-	Connection(ip::tcp::socket&& socket, Utils::ThreadSafeQueue<web_server::Incoming_Message_type>& incoming_queue)
+	Connection(ip::tcp::socket&& socket, connection_manager::ThreadSafeQueue<web_server::connection_manager::Incoming_Message_type>& incoming_queue)
 		: socket_(std::move(socket))
 		, incoming_queue_(incoming_queue)
 	{
@@ -49,19 +35,18 @@ public:
 	}
 
     // reads client's messages and queues them
-	void write_data(const std::string& message_str) {
-		async_write(socket_, boost::asio::buffer(message_str)
+	void write_data(std::string&& message_str) {
+		async_write(socket_, boost::asio::buffer(std::move(message_str))
 			, [&](boost::system::error_code ec, std::size_t bytes_read) {
 			if (ec == error::eof) {
 				LOG(INFO) << "connection closed";
+				return;
 			}
 			else if (ec) {
 				LOG(ERROR) << "failed to send data to socket:\n" << ec.what();
+				return;
 			}
-			else {
-				LOG(DEBUG) << "sent message:\n" << message_str
-					<< "\nto socket at ip: " << get_ip();
-			}
+			LOG(DEBUG) << "sent message to socket at ip: " << get_ip();
 		});
 	}
 
@@ -71,28 +56,64 @@ public:
 
         const std::string header_delimiter = "\r\n\r\n";
 
-		// TODO: read the body too
 		async_read_until(socket_, read_buf_, header_delimiter
 				, [&, self = shared_from_this()](boost::system::error_code ec, std::size_t bytes_read) {
 			if (ec == error::eof) {
 				LOG(INFO) << "connection closed";
+				return;
 			}
 			else if (ec) {
 				LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
+				return;
 			}
-			else {
-				incoming_queue_.push(Incoming_Message_type(
-					web_server::HTTP::Request(read_buf_), shared_from_this()
-				));
+			LOG(DEBUG) << "read the headers";
+
+			// i kept getting a dangling reference in the callback
+			// so fuck it shared_ptr it is
+			auto Request_ptr = std::make_shared<web_server::HTTP::Request>();
+			Request_ptr->SetHeaders(read_buf_);
+
+			LOG(INFO) << "connection at ip " << get_ip()
+				<< " requested " << Request_ptr->method
+				<< " " << Request_ptr->directory;
+
+			// we may have already read part of the body in the read_untill
+			std::size_t bytes_to_read = Request_ptr->GetContentLength()
+				- std::min(Request_ptr->GetContentLength(), read_buf_.size());
+
+			async_read(socket_, read_buf_, transfer_exactly(bytes_to_read)
+					, [&, Request_ptr, self](boost::system::error_code ec, std::size_t bytes_read) {
+				if (ec == error::eof) {
+					LOG(INFO) << "connection closed";
+					return;
+				}
+				else if (ec) {
+					LOG(ERROR) << "failed to read data from socket:\n" << ec.what();
+					return;
+				}
+				LOG(DEBUG) << "read the body";
+
+				Request_ptr->SetBody(read_buf_);
+
+				incoming_queue_.push(web_server::connection_manager::Incoming_Message_type(
+						std::move(*Request_ptr), self));
+				// auto shit = incoming_queue_.pop();
+				// LOG(ERROR) << "fuck me blyat " << shit.http_request.body;
+
+				// for (const auto& elem : incoming_queue_.queue_) {
+				// 	std::cout << elem << " ";
+				// }
+				// std::cout << std::endl;
 				read_data();
-			}
+			});
 		});
+
     }
 
 private:
     ip::tcp::socket socket_;
     streambuf read_buf_;
-	Utils::ThreadSafeQueue<web_server::Incoming_Message_type>& incoming_queue_;
+	web_server::connection_manager::ThreadSafeQueue<web_server::connection_manager::Incoming_Message_type>& incoming_queue_;
 };
 
 }

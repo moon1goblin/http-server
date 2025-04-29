@@ -4,12 +4,10 @@
 #include <optional>
 
 #include "api.hpp"
-#include "boost/asio/io_context.hpp"
 #include "connection.hpp"
 #include "http-parser.hpp"
 #include "utils/logger.hpp"
 #include "utils/jthread.hpp"
-#include "utils/thread_safe_queue.hpp"
 
 namespace web_server {
 using namespace boost::asio;
@@ -23,35 +21,33 @@ public:
 	}
 
 	void start() {
+		is_running_ = true;
 		accept_connections();
 		handle_connections();
 		LOG(INFO) << "server started, accepting connections";
 		io_context_.run();
 	}
 
-	// TODO: implement this for real
+	// FIXME: does not fucking work
 	void stop() {
-		io_context_.stop();
+		LOG(INFO) << "attempting to stop the server";
+		is_running_ = false;
 		respond_thread_.reset();
-		LOG(DEBUG) << "stopped responding to messages";
-
+		io_context_.stop();
 		LOG(INFO) << "server stopped";
 	}
 
 	void handle_connections() {
-		LOG(DEBUG) << "started responding to messages";
+		// TODO: make this lambda recursive
 		respond_thread_.emplace(std::thread([&]() {
 			while (true) {
-				Incoming_Message_type Request_Message = std::move(incoming_queue_.pop());
+				const web_server::connection_manager::Incoming_Message_type 
+				Request_Message = std::move(incoming_queue_.pop());
 				// checking before formulating/sending response to not waste resources
 				if (Request_Message.connection_ptr == nullptr) {
 					LOG(DEBUG) << "responding to a connection that was disonected";
 					continue;
 				}
-
-				LOG(DEBUG) << "connection at ip " << Request_Message.connection_ptr->get_ip()
-					<< " requested " << Request_Message.http_request.method
-					<< " " << Request_Message.http_request.directory;
 				// make response
 				std::string response = api.make_http_response(Request_Message.http_request).make_string();
 
@@ -60,7 +56,7 @@ public:
 					LOG(DEBUG) << "responding to a connection that was disonected";
 					continue;
 				}
-				Request_Message.connection_ptr->write_data(response);
+				Request_Message.connection_ptr->write_data(std::move(response));
 			}
 		}));
 	}
@@ -85,16 +81,12 @@ public:
 public:
 	api api;
 private:
+	bool is_running_;
     io_context io_context_;
     ip::tcp::acceptor acceptor_;
     std::optional<ip::tcp::socket> new_socket_;
 	std::optional<Utils::JThread> respond_thread_;
-	Utils::ThreadSafeQueue<web_server::Incoming_Message_type> incoming_queue_;
+	web_server::connection_manager::ThreadSafeQueue<web_server::connection_manager::Incoming_Message_type> incoming_queue_;
 };
-
-// for the map to work bruh
-bool operator<(const api::route_type& lhs, const api::route_type rhs) {
-	return (lhs.method < rhs.method) || (lhs.method == rhs.method && lhs.directory < rhs.directory);
-}
 
 }

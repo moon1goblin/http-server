@@ -1,5 +1,5 @@
 // logger config:
-#define LOGGER_CONFIG_SET_LOG_LEVEL DEBUG
+#define LOGGER_CONFIG_SET_LOG_LEVEL INFO
 #define LOGGER_CONFIG_ENABLE_TIMESTAMPS true
 
 #pragma once

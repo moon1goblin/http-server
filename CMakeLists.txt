@@ -11,4 +11,8 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 add_executable(run main.cpp)
 
+# TODO: compile as library and then make the example use the library
+# but i wanna test faster so do this later
+# add_library(lib SHARED web-server.hpp)
+
 target_link_libraries(run LINK_PUBLIC ${Boost_LIBRARIES})
