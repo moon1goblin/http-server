@@ -2,19 +2,18 @@
 
 int main() {
 	try {
-		web_server::Server my_server(6969);
+		std::uint16_t port = 6969;
+		web_server::Server my_server(port);
 
 		my_server.api.add_route("GET", "/", 
 			[](const web_server::HTTP::Request&, web_server::HTTP::Response& Response) {
-				Response.set_content("<h1>hello bitches</h1>", "text/html");
+				Response.set_content("<h1>hello hi</h1>", "text/html");
 			}
 		);
 
-		my_server.api.add_route("POST", "/", 
+		my_server.api.add_route("POST", "/hello", 
 			[](const web_server::HTTP::Request& Request, web_server::HTTP::Response& Response) {
-				// Response.set_content(Request.body, Request.GetContentType());
-				// Response.set_content("<h1>hello bitches</h1>", "text/html");
-				Response.set_content(std::move(Request.body), "text");
+				Response.set_content(std::move(Request.body), Request.GetContentType());
 			}
 		);
 

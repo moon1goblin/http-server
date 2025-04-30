@@ -22,6 +22,13 @@ struct Request {
 
 		std::getline(is, method, ' ');
 		std::getline(is, directory, ' ');
+		if (directory.back() == '/'){
+			directory.pop_back();
+		}
+		if (directory.empty()) {
+			directory = "/";
+		}
+
 		std::getline(is, http_version, '\r');
 
 		std::string tmp_string;
@@ -75,10 +82,17 @@ struct Response {
 		, http_version("HTTP/1.1") {
 	}
 
+	// 200 OK by default
 	void set_status(const std::string& value) {
 		status = value;
 	}
 
+	// 200 OK by default
+	void set_status(std::string&& value) {
+		status = std::string(value);
+	}
+
+	// sets content length automatically
 	void set_content(const std::string& content_text, const std::string& content_type)
 	{
 		body = content_text;
@@ -86,11 +100,20 @@ struct Response {
 		header_map["Content-Type"] = content_type.empty() ? "text" : content_type;
 	}
 
+	// sets content length automatically
 	void set_content(std::string&& content_text, std::string&& content_type)
 	{
 		body = std::move(content_text);
 		header_map["Content-Length"] = std::to_string(body.length());
 		header_map["Content-Type"] = content_type.empty() ? "text" : std::move(content_type);
+	}
+
+	void add_header(const std::string& header_name, const std::string& header_value) {
+		header_map[header_name] = header_value;
+	}
+
+	void add_header(std::string&& header_name, const std::string& header_value) {
+		header_map[header_name] = header_value;
 	}
 
 	std::string make_string() {

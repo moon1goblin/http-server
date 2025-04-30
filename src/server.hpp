@@ -2,6 +2,7 @@
 
 #include <boost/asio.hpp>
 #include <optional>
+#include <thread>
 
 #include "api.hpp"
 #include "connection.hpp"
@@ -28,18 +29,18 @@ public:
 		io_context_.run();
 	}
 
-	// FIXME: does not fucking work
+	// TODO: this does not fucking work
 	void stop() {
 		LOG(INFO) << "attempting to stop the server";
 		is_running_ = false;
-		respond_thread_.reset();
+		respond_thread_.join();
 		io_context_.stop();
 		LOG(INFO) << "server stopped";
 	}
 
 	void handle_connections() {
 		// TODO: make this lambda recursive
-		respond_thread_.emplace(std::thread([&]() {
+		respond_thread_ = std::thread([&]() {
 			while (true) {
 				const web_server::connection_manager::Incoming_Message_type 
 				Request_Message = std::move(incoming_queue_.pop());
@@ -58,7 +59,7 @@ public:
 				}
 				Request_Message.connection_ptr->write_data(std::move(response));
 			}
-		}));
+		});
 	}
 
     void accept_connections() {
@@ -85,7 +86,7 @@ private:
     io_context io_context_;
     ip::tcp::acceptor acceptor_;
     std::optional<ip::tcp::socket> new_socket_;
-	std::optional<Utils::JThread> respond_thread_;
+	std::thread respond_thread_;
 	web_server::connection_manager::ThreadSafeQueue<web_server::connection_manager::Incoming_Message_type> incoming_queue_;
 };
 

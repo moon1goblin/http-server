@@ -1,8 +1,30 @@
 # hello bitches
 
-this is a web server written in c++ using the boost asio library, for educational purposes
+this is a server with rest api written in c++, with help from the boost asio library
 
-i will add more feautures, but it does work : )
+this project is for educational purpouses, and im new to programming in general, so dont hit me : )
+
+## api
+
+```cpp
+web_server::Server my_server(6969);
+
+my_server.api.add_route("GET", "/hello", 
+    [](const web_server::HTTP::Request&, web_server::HTTP::Response& Response) {
+        Response.set_content("<h1>hello bitches</h1>", "text/html");
+    }
+);
+
+my_server.api.add_route("POST", "/", 
+    [](const web_server::HTTP::Request& Request, web_server::HTTP::Response& Response) {
+        Response.set_content(std::move(Request.body), "text");
+    }
+);
+
+my_server.start();
+
+```
+
 
 ## build & run
 
