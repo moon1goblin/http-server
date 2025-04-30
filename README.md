@@ -44,7 +44,7 @@ but if u need, change these lines right at the top of src/utils/logger.hpp
 #define LOGGER_CONFIG_ENABLE_TIMESTAMPS true
 ```
 
-LOGGER_LEVEL: OFF -> ERROR - > INFO -> DEBUG
+LOGGER_LEVEL: OFF -> ERROR -> INFO -> DEBUG
 
 ## build & run
 
