@@ -24,7 +24,7 @@ my_server.api.add_route("GET", "/",
 
 my_server.api.add_route("POST", "/hello", 
     [](const web_server::HTTP::Request& Request, web_server::HTTP::Response& Response) {
-        Response.set_content(std::move(Request.body), "text");
+        Response.set_content(std::move(Request.body), Request.GetContentType());
     }
 );
 
