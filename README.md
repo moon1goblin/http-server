@@ -10,7 +10,7 @@ this project is for educational purpouses, and im new to programming in general,
 
 pretty self explanarory, i think
 
-theres also a few methods for Response/Request to help get/set data, here is an example
+theres also a few methods for the Request/Response to get/set data, here is an example
 
 ```cpp
 std::uint16_t port = 6969;
@@ -30,6 +30,8 @@ my_server.api.add_route("POST", "/hello",
 
 my_server.start();
 ```
+
+and theres also a default 404 page for any other routes
 
 ## build & run
 
