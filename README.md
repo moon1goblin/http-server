@@ -33,6 +33,19 @@ my_server.start();
 
 and theres also a default 404 page for any other routes
 
+## logging
+
+you can just use the logger immidiately with no config
+
+but if u need, change these lines right at the top of src/utils/logger.hpp
+
+```cpp
+#define LOGGER_CONFIG_SET_LOG_LEVEL INFO
+#define LOGGER_CONFIG_ENABLE_TIMESTAMPS true
+```
+
+LOGGER_LEVEL: OFF -> ERROR - > INFO -> DEBUG
+
 ## build & run
 
 make sure you have a c++ compiler, cmake and boost installed, i think thats all?
