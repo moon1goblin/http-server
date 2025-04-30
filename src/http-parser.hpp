@@ -49,11 +49,6 @@ struct Request {
 		read_buf.consume(read_buf.size());
 	}
 
-	Request()
-		: method("FUCK")
-	{
-	}
-
 	std::size_t GetContentLength() const {
 		auto iter_content_length = header_map.find("Content-Length");
 		if (iter_content_length == header_map.end()) {
